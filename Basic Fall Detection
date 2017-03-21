@@ -1,71 +1,70 @@
-/*This program allows for the detection of accelerations using a three axis 
-accelerometer (ADXL 3xx)..Originally referenced Tom Igoe/David A. Mellis code
-http://www.arduino.cc/en/Tutorial/ADXL3xx
+// these constants describe the pins. They won't change:
+const int xpin = A0;                  // x-axis of the accelerometer
+const int ypin = A1;                  // y-axis
+const int zpin = A2;                  // z-axis (only on 3-axis models)
+int ledPin = 6;
+const int piezo = 9;
+int xa = 0;
+int ya = 0;
+int za = 0;
 
-created 2 Oct 2009
-by Chris Anthony
-
-*/
-
-const int groundpin = 19; //Setting groundpin to Analog pin 5 
-const int xpin = 0; //x axis readings of accelerometer 
-const int ypin = 1; //y axis readings of accelerometer 
-const int zpin = 2; //z axis readings of accelerometer
-int ledPin = 6; //digital pin that turns on our LED
-int a = 0; //x axis
-int b = 0; //x axis
-int c = 0; //y axis
-int d = 0; //y axis
-int e = 0; //z axis
-int f = 0; //z axis
-long lastPulse = 0; //for millis fx
-int refreshTime = 5; //for millis fx
-
+int sampleDelay = 100;   //number of milliseconds between readings
 
 void setup()
 {
-// initialize the serial communications:
-Serial.begin(9600);
+  // initialize the serial communications:
+  Serial.begin(9600);
+  Serial.println("Starting up");
+  tone(piezo, 2000, 500);
+  //Make sure the analog-to-digital converter takes its reference voltage from
+  // the AREF pin
+  analogReference(EXTERNAL);
 
-pinMode(groundpin, OUTPUT); //This code turns the groundpin
-digitalWrite(groundpin, LOW); //into a voltage sink=ground.
-pinMode(ledPin, OUTPUT); //tell our ledPin to output voltage when commanded
-a = (float)analogRead(xpin); //this is for the x axis
-c = (float)analogRead(ypin); //this is for the y axis
-e = (float)analogRead(zpin); //this is for the z axis
-delay(5); //I use this delay just in void setup to attempt to mimick millis, this is used just once
+  pinMode(xpin, INPUT);
+  pinMode(ypin, INPUT);
+  pinMode(zpin, INPUT);
 }
 
 void loop()
 {
-if (millis() - lastPulse >= refreshTime) {
-b = (float)analogRead(xpin);
-d = (float)analogRead(ypin);
-f = (float)analogRead(zpin);
-//Code below is coming up with a final vector that takes into account the 
-//vectors of all three axes. If this final vector is greater than 200, which is 
-//equivalent to 2.5G's with 3.3V input to acclerometer, we turn on the LED
-//note that with this setup 1 G will be equivalent to a change in ~70 
-//on your serial monitor. This is where we get 175 in below math
-if (sqrt(sq(a-b) + sq(c-d) + sq(e-f)) > 175) { 
+  int x = analogRead(xpin);
+
+  //add a small delay between pin readings.  I read that you should
+  //do this but haven't tested the importance
+    delay(1); 
+
+  int y = analogRead(ypin);
+
+  //add a small delay between pin readings.  I read that you should
+  //do this but haven't tested the importance
+    delay(1); 
+
+  int z = analogRead(zpin);
+
+  //zero_G is the reading we expect from the sensor when it detects
+  //no acceleration.  Subtract this value from the sensor reading to
+  //get a shifted sensor reading.
+  float zero_G = 512.0; 
+
+  //scale is the number of units we expect the sensor reading to
+  //change when the acceleration along an axis changes by 1G.
+  //Divide the shifted sensor reading by scale to get acceleration in Gs.
+  float scale = 102.3;
+  
+  xa = ((float)x - zero_G)/scale; // calculates x acceleration
+  ya =((float)y - zero_G)/scale; // calculates y acceleration 
+  za = ((float)z - zero_G)/scale; // calculates z acceleration
+  
+  Serial.print(((float)x - zero_G)/scale);
+  Serial.print("\t");  Serial.print(((float)y - zero_G)/scale);
+  Serial.print("\t");  Serial.print(((float)z - zero_G)/scale);
+  Serial.print("\n");  // delay before next reading:
+  delay(sampleDelay);
+if (sqrt(sq(xa) + sq(ya) + sq(za)) > 2.5) { 
 digitalWrite(ledPin, HIGH);
+tone(piezo, 4000, 1500);
 Serial.print("Fall");
 delay(3000); //this code keeps LED on for 3 seconds just for interaction purposes
 }
 else digitalWrite(ledPin, LOW);
-a = b; //we swith our variables so we can now look at the 3 set of readings
-c = d; //compared to the second set. 
-e = f;
-
-Serial.print(analogRead(xpin));
-// print a tab between values:
-Serial.print("\t");
-Serial.print(analogRead(ypin));
-// print a tab between values:
-Serial.print("\t");
-Serial.print(analogRead(zpin));
-Serial.println();
-
-lastPulse = millis(); 
-}
 }
